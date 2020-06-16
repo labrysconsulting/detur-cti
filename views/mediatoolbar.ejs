@@ -1,0 +1,100 @@
+<html>
+
+<head>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+    <!--Engagement Cloud-->
+    <script type="text/javascript"
+        src="https://eojk.fa.em2.oraclecloud.com:443/service/js/mcaInteractionV1.js?oraTbStyle=LiveWindow"></script>
+
+    <!--Socket IO-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+
+    <script type="text/javascript">
+
+        var socket = io.connect('https://ctinodejs.herokuapp.com/', { secure: true });
+
+        window.onload = function () {
+            callGetConfiguration();
+            onOutgoingEvent();
+        }
+
+        function callGetConfiguration() {
+            svcMca.tlb.api.getConfiguration('LOOKUP_OBJECTS', function (response) {
+                if (response.result == 'success') {
+                    socket.emit('joinRoom', {
+                        agentId: response.configuration.agentId
+                    });
+                } else {
+                    console.log(response);
+                }
+            });
+        }
+
+        function onOutgoingEvent() {
+            svcMca.tlb.api.onOutgoingEvent('PHONE', 'ORA_SERVICE', function (response) {
+                $.ajax({
+                    url: "URL",
+                    type: "POST",
+                    data: response,
+                    success: function (result) {
+                        console.log(result);
+                    }
+                })
+            }, 'ORA_SVC_PHONE');
+        }
+
+        socket.on('inboundCallNotification', function (data) {
+            inboundCallNotification(data);
+        });
+
+        socket.on('startCommEvent', function (data) {
+            startCommEvent(data);
+        });
+
+        socket.on('closeCommEvent', function (data) {
+            closeCommEvent(data)
+        });
+
+        function inboundCallNotification(data) {
+            var inData = {};
+            inData.SVCMCA_ANI = data.mobileNumber;
+            svcMca.tlb.api.newCommEvent('PHONE', 'ORA_SERVICE', '12345-1234-67890', inData, null, function (response) {
+                if (response.result != 'success') {
+                    console.log(response.error);
+                }
+            }, 'ORA_SVC_PHONE');
+        }
+
+        function startCommEvent(data) {
+            console.log(data);
+            var inData = {};
+            inData.SVCMCA_ANI = data.mobileNumber;
+            inData.SVCMCA_CONTACT_NAME = data.contactName;
+            inData.createSr = 'yes';
+            svcMca.tlb.api.startCommEvent('PHONE', 'ORA_SERVICE', '12345-1234-67890', inData, function (response) {
+                if (response.result == 'success') {
+                    console.log('Created service request: ' + response.SVCMCA_SR_NUMBER);
+                } else {
+                    console.log('Operation finished with error: ' + response.error);
+                }
+            }, 'ORA_SVC_PHONE');
+        }
+
+        function closeCommEvent(data) {
+            var inData = {};
+            inData.SVCMCA_ANI = data.mobileNumber;
+            inData.SVCMCA_CONTACT_NAME = data.contactName;
+            svcMca.tlb.api.closeCommEvent('PHONE', 'ORA_SERVICE', '12345-1234-67890', inData, 'WRAPUP', function (response) {
+                if (response.result != 'success') {
+                    console.log('Operation finished with error: ' + response.error);
+                }
+            }, 'ORA_SVC_PHONE');
+        }
+    </script>
+</head>
+
+<body>
+</body>
+
+</html>
